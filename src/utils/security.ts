@@ -1,8 +1,18 @@
 /**
  * Security utility for input normalization and sanitization
  */
-export const sanitizeInput = (input: unknown): string => {
-  if (typeof input !== 'string') return '';
-  // Strip C0 and C1 control characters and trim whitespace
-  return input.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim();
+export const sanitizeInput = (input: unknown): unknown => {
+  if (typeof input === 'string') {
+    // Strip C0 and C1 control characters
+    return input.replace(/[\x00-\x1F\x7F-\x9F]/g, "").trim();
+  }
+  if (Array.isArray(input)) {
+    return input.map(sanitizeInput);
+  }
+  if (typeof input === 'object' && input !== null) {
+    return Object.fromEntries(
+      Object.entries(input).map(([k, v]) => [k, sanitizeInput(v)])
+    );
+  }
+  return input;
 };

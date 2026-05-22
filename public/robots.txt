@@ -1,3 +1,2 @@
 User-agent: *
 Disallow: /
-# F-11: Sitemap removed to prevent internal structure leakage

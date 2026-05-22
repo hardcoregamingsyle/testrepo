@@ -1,8 +1,12 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "declarationMap": false
+  },
+  "include": ["src"]
 }

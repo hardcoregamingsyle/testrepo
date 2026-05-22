@@ -1,37 +1,34 @@
-# SecureApp
+# SecureApp: Production-Ready React 19 Application
 
-A high-security, production-ready React 19 application optimized for deployment on Cloudflare Pages.
+SecureApp is a high-performance, security-hardened React 19 application optimized for Cloudflare Pages.
 
-## Features
-- **Edge Security:** Enforces strict CSP, HSTS, and X-Frame-Options at the Cloudflare edge via `public/_headers`.
-- **SPA Routing:** Seamless client-side navigation via `public/_redirects`.
-- **Security-First:** Includes automated audit pipelines (GitHub Actions), strict Zod-based data validation, and non-root container execution.
+## 1. Features
+- **Feature-First Architecture:** Domain-isolated modules for high maintainability.
+- **Security-Hardened:** Zero-trust API boundary validation using Zod and strict CSP headers.
+- **Concurrency Control:** Singleton `p-queue` orchestration for API stability.
+- **Edge-Ready:** Native Cloudflare Pages integration with edge-side security headers.
 
-## Setup
-1. Install dependencies: `npm install`
-2. Run development server: `npm run dev`
-3. Build for production: `npm run build`
-
-## Deployment
-This project is configured for **Cloudflare Pages**.
-- **Deployment:** `npm run deploy` (via Wrangler)
+## 2. Deployment
+This project is configured for Cloudflare Pages.
+- **Build Command:** `npm run build`
 - **Output Directory:** `dist/`
-- **Configuration:** Managed via `wrangler.toml` and `public/_headers`.
+- **Security Headers:** Defined in `public/_headers`.
+- **SPA Routing:** Managed by `public/_redirects`.
 
-## Architecture
-- **Framework:** React 19 + Vite
-- **State Management:** Zustand (slice pattern, `immer` for immutability)
-- **Validation:** Zod (strict runtime schema enforcement)
-- **Infrastructure:** Cloudflare Pages (Edge) + Docker (Local/CI/CD)
+### Setup
+1. Install dependencies: `npm install`
+2. Set environment variables in `.env` (refer to `.env.example`).
+3. Deploy: `npm run deploy` (requires `wrangler` CLI).
 
-## Security Policies
-- **CSP:** Strict directives; `frame-ancestors 'none'` prevents clickjacking.
-- **Transport:** HSTS enforced with `max-age=63072000; includeSubDomains; preload`.
-- **Integrity:** Subresource Integrity (SRI) hashes generated during build.
+## 3. Security Policy
+- **Content-Security-Policy (CSP):** Strict enforcement of `object-src 'none'` and `frame-ancestors 'none'`.
+- **HSTS:** 2-year duration with preloading.
+- **CSRF:** Token-based validation enforced on all state-changing requests.
 
-## Environment Variables
-- `VITE_API_URL`: The base URL for the backend API.
-- `API_ORIGIN`: Production API endpoint allowed by CSP.
+## 4. Architecture
+- **State Management:** Zustand with slice pattern and `immer` for immutability.
+- **API Layer:** `axios` + `p-queue` for concurrency throttling and type-safe schema validation.
+- **Infrastructure:** Containerized environment (`Dockerfile` + `docker-compose.yml`) for local development, and Edge-native deployment for production.
 
-## Infrastructure Tests
-Run `npm test tests/infrastructure.test.ts` to verify security headers and routing rules.
+## 5. API Docs
+All API boundaries are guarded by Zod schemas. Any request exceeding the `MAX_PAYLOAD_SIZE` (1MB) or failing schema validation is rejected at the boundary.

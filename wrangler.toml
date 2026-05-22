@@ -1,10 +1,6 @@
 name = "secure-app"
-compatibility_date = "2024-05-22"
-compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+compatibility_date = "2025-02-19"
 
-[pages]
-bucket = "dist"
-source = "dist"
-
-[build]
-command = "npm run build"
+[vars]
+NODE_ENV = "production"

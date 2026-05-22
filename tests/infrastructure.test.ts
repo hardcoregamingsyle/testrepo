@@ -7,7 +7,7 @@ describe('Cloudflare Pages Infrastructure Hardening', () => {
     const content = fs.readFileSync(path.resolve(__dirname, '../public/_headers'), 'utf-8');
     expect(content).toContain('Content-Security-Policy: default-src \'self\'');
     expect(content).toContain('frame-ancestors \'none\'');
-    expect(content).toContain('connect-src \'self\' https://api.production.com https://api-v2.production.com');
+    expect(content).toContain('connect-src \'self\' https://api.production.com');
   });
 
   it('should enforce HSTS with subdomains and preload', () => {
