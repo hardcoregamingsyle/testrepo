@@ -1,0 +1,4 @@
+Contact: mailto:security@example.com
+Encryption: https://example.com/pgp.asc
+Policy: https://github.com/your-org/secure-app/blob/main/SECURITY.md
+Expires: 2025-06-01T00:00:00Z
