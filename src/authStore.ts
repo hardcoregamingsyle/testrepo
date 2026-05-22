@@ -1,17 +1,24 @@
 import { create } from 'zustand';
 
 interface AuthState {
+  csrfToken: string | null;
   userId: string | null;
-  revalidating: boolean;
-  setSession: (data: { userId: string }, offset: number) => void;
-  setRevalidating: (status: boolean) => void;
+  setSession: (data: { token: string; userId: string }, idleTimeout: number) => void;
   reset: () => void;
 }
 
+let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
+  csrfToken: null,
   userId: null,
-  revalidating: false,
-  setSession: (data, _) => set({ userId: data.userId, revalidating: false }),
-  setRevalidating: (status) => set({ revalidating: status }),
-  reset: () => set({ userId: null, revalidating: false }),
+  setSession: (data, idleTimeout = 900000) => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => useAuthStore.getState().reset(), idleTimeout);
+    set({ csrfToken: data.token, userId: data.userId });
+  },
+  reset: () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    set({ csrfToken: null, userId: null });
+  }
 }));

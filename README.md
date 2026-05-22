@@ -21,14 +21,16 @@ This project is configured for Cloudflare Pages.
 3. Deploy: `npm run deploy` (requires `wrangler` CLI).
 
 ## 3. Security Policy
-- **Content-Security-Policy (CSP):** Strict enforcement of `object-src 'none'` and `frame-ancestors 'none'`.
-- **HSTS:** 2-year duration with preloading.
-- **CSRF:** Token-based validation enforced on all state-changing requests.
+- **Content-Security-Policy (CSP):** Strict enforcement of `object-src 'none'`, `frame-ancestors 'none'`, and restricted `connect-src`.
+- **HSTS:** 2-year duration (`max-age=63072000`) with `includeSubDomains` and `preload`.
+- **CSRF:** Token-based validation enforced on all state-changing requests via `apiClient` interceptors.
 
 ## 4. Architecture
 - **State Management:** Zustand with slice pattern and `immer` for immutability.
 - **API Layer:** `axios` + `p-queue` for concurrency throttling and type-safe schema validation.
-- **Infrastructure:** Containerized environment (`Dockerfile` + `docker-compose.yml`) for local development, and Edge-native deployment for production.
+- **Infrastructure:** Containerized environment (`Dockerfile` + `docker-compose.yml`) for local development, and Edge-native security rules for production.
 
-## 5. API Docs
-All API boundaries are guarded by Zod schemas. Any request exceeding the `MAX_PAYLOAD_SIZE` (1MB) or failing schema validation is rejected at the boundary.
+## 5. Deployment Verification
+- **Header Injection:** All security headers are managed by `public/_headers` at the edge.
+- **Routing:** Deep links are handled by `public/_redirects` ensuring SPA compatibility.
+- **Redundancy:** Ensure no `_headers` file exists at the root to avoid deployment conflicts.
