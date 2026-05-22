@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react(), viteSRI()],
   build: {
     sourcemap: false,
-    minify: 'terser',
     rollupOptions: {
-      output: { manualChunks: undefined },
+      output: {
+        manualChunks: undefined,
+      },
     },
   },
 });
