@@ -5,7 +5,8 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "declarationMap": false
   },
   "include": ["src"]
 }
