@@ -1,20 +1,16 @@
 import { z } from 'zod';
 
-const configSchema = z.object({ 
-  API_URL: z.string().url()
-});
+const configSchema = z.object({ API_URL: z.string().url() });
 
-class ConfigManager {
-  private static instance: Readonly<{ API_URL: string }>;
-
-  static get() {
-    if (!this.instance) {
-      const result = configSchema.safeParse({ API_URL: import.meta.env.VITE_API_URL });
-      if (!result.success) throw new Error("Invalid environment configuration");
-      this.instance = Object.freeze(result.data);
+export const getConfig = () => {
+  const raw = { API_URL: import.meta.env.VITE_API_URL };
+  const result = configSchema.safeParse(raw);
+  if (!result.success) {
+    // Obfuscated error handling
+    if (process.env.NODE_ENV !== 'production') {
+       console.error('Configuration integrity failure');
     }
-    return this.instance;
+    throw new Error("ERR_CONFIG_INVALID");
   }
-}
-
-export const getConfig = () => ConfigManager.get();
+  return result.data;
+};

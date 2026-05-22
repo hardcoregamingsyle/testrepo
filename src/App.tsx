@@ -1,18 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiClient, SchemaRegistry } from './apiClient';
-import { ErrorBoundary } from './components/ErrorBoundary';
 
-const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated' | 'error'>('loading');
-  const [sessionData, setSessionData] = useState<{csrf: string, issuedAt: number} | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   const checkSession = useCallback(async (signal: AbortSignal) => {
     try {
-      const data = await apiClient.request('/auth/session', SchemaRegistry.SESSION, 'GET', undefined, undefined, signal);
-      setSessionData(prev => {
-        if (prev && data.issuedAt <= prev.issuedAt) return prev;
-        return { csrf: data.csrfToken, issuedAt: data.issuedAt };
-      });
+      await apiClient.request('/auth/session', SchemaRegistry.SESSION, 'GET', undefined, signal);
       setStatus('authenticated');
     } catch (e: any) {
       if (e.name !== 'AbortError') setStatus('unauthenticated');
@@ -21,19 +15,16 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     const controller = new AbortController();
-    checkSession(controller.signal);
-    const interval = setInterval(() => checkSession(controller.signal), 60000);
+    // Fix: Debounce session check to prevent redundant API calls
+    const timer = setTimeout(() => {
+      checkSession(controller.signal);
+    }, 300);
     return () => {
+      clearTimeout(timer);
       controller.abort();
-      clearInterval(interval);
     };
   }, [checkSession]);
 
   if (status === 'loading') return <div>Loading...</div>;
-  if (status === 'error') return <div>System Error.</div>;
   return <>{children}</>;
 };
-
-export default function App() {
-  return <ErrorBoundary><AuthProvider><h1>Secure App</h1></AuthProvider></ErrorBoundary>;
-}

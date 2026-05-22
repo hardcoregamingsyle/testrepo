@@ -1,17 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { apiClient, SchemaRegistry } from '../apiClient';
 
-export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [auth, setAuth] = useState<'loading' | 'authenticated' | 'unauthorized'>('loading');
-  const isMounted = useRef(true);
+export const ProtectedRoute = ({ children, requiredRole }: { children: JSX.Element, requiredRole?: 'admin' | 'user' }) => {
+  const [status, setStatus] = useState<'loading' | 'authorized' | 'forbidden'>('loading');
 
   useEffect(() => {
-    isMounted.current = true;
-    // ... logic to verify session ...
-    return () => { isMounted.current = false; };
-  }, []);
+    apiClient.request('/auth/session', SchemaRegistry.SESSION, 'GET')
+      .then(s => setStatus(requiredRole && s.role !== requiredRole ? 'forbidden' : 'authorized'))
+      .catch(() => setStatus('forbidden'));
+  }, [requiredRole]);
 
-  if (auth === 'loading') return <div>Loading...</div>;
-  if (auth === 'unauthorized') return <Navigate to="/login" />;
-  return <>{children}</>;
+  if (status === 'loading') return null;
+  if (status === 'forbidden') return <Navigate to="/login" replace />;
+  return children;
 };

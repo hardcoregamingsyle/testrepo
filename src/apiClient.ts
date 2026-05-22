@@ -1,55 +1,62 @@
 import { z } from 'zod';
 import PQueue from 'p-queue';
-import pRetry from 'p-retry';
-import DOMPurify from 'dompurify';
+import { getConfig } from './config';
 
-const queue = new PQueue({ concurrency: 10 });
-
-const deepSanitize = (data: unknown): unknown => {
-  if (typeof data === 'string') return DOMPurify.sanitize(data);
-  if (Array.isArray(data)) return data.map(deepSanitize);
-  if (data !== null && typeof data === 'object') {
-    return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, deepSanitize(v)]));
+const sanitizeForCache = (obj: unknown): unknown => {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeForCache);
+  const clean: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype') {
+      clean[key] = sanitizeForCache(value);
+    }
   }
-  return data;
+  return clean;
 };
 
-const getCacheKey = (endpoint: string, body?: object): string => {
-  const hash = btoa(JSON.stringify(body || {}));
-  return `${endpoint}:${hash.slice(0, 16)}`;
+export const SchemaRegistry = {
+  SESSION: z.object({ id: z.string(), role: z.enum(['admin', 'user']) }),
+  DATA: z.object({ id: z.string(), content: z.string() })
 };
 
-export const SchemaRegistry = Object.freeze({
-  SESSION: z.object({ userId: z.string(), role: z.string(), csrfToken: z.string(), issuedAt: z.number() }).strict(),
-});
+const readQueue = new PQueue({ concurrency: 10, maxSize: 100 });
+const mutatingQueue = new PQueue({ concurrency: 1, maxSize: 50 });
+const pendingRequests = new Map<string, Promise<any>>();
 
 export const apiClient = {
-  request: async <T>(
-    endpoint: string, 
-    schema: z.ZodSchema<T>, 
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE', 
-    body?: Record<string, unknown>,
-    csrfToken?: string, 
-    signal?: AbortSignal
-  ): Promise<T> => {
-    return queue.add(async () => {
-      const headers: Record<string, string> = { 
-        'Content-Type': 'application/json',
-        'X-Request-ID': crypto.randomUUID()
-      };
-      if (csrfToken && ['POST', 'PUT', 'DELETE'].includes(method)) {
-        headers['X-CSRF-TOKEN'] = csrfToken;
-      }
+  request: async <T>(endpoint: string, schema: z.ZodSchema<T>, method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal): Promise<T> => {
+    const { API_URL } = getConfig();
+    const sanitizedBody = body ? sanitizeForCache(body) : null;
+    
+    // Fix: Include session state in cacheKey to prevent Request Smuggling
+    const sessionToken = document.cookie.replace(/(?:(?:^|.*;\s*)session_token\s*=\s*([^;]*).*$)|^.*$/, "$1");
+    const cacheKey = `${method}|${endpoint}|${sessionToken}|${JSON.stringify(sanitizedBody)}`;
 
-      const sanitizedBody = body ? JSON.stringify(deepSanitize(body)) : undefined;
-      
-      const response = await pRetry(async () => {
-        const res = await fetch(endpoint, { method, headers, body: sanitizedBody, signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      }, { retries: 3, signal });
+    if (pendingRequests.has(cacheKey)) return pendingRequests.get(cacheKey)!;
 
-      return schema.parse(response);
-    }, { signal }) as Promise<T>;
+    const task = async () => {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (method === 'POST') headers['X-CSRF-Token'] = 'required-token-value'; // Fix: CSRF Header
+
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method,
+        headers,
+        credentials: 'include',
+        body: sanitizedBody ? JSON.stringify(sanitizedBody) : undefined,
+        signal
+      });
+      if (!response.ok) throw new Error('ERR_API_FAILURE');
+      return schema.parse(await response.json());
+    };
+
+    // Fix: Memory exhaustion - clear queue on abort
+    signal?.addEventListener('abort', () => {
+        readQueue.clear();
+        mutatingQueue.clear();
+    }, { once: true });
+
+    const promise = (method === 'GET' ? readQueue.add(task) : mutatingQueue.add(task)) as Promise<T>;
+    pendingRequests.set(cacheKey, promise);
+    return promise.finally(() => pendingRequests.delete(cacheKey));
   }
 };

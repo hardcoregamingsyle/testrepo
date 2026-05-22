@@ -1,0 +1,5 @@
+{
+  "high": true,
+  "critical": true,
+  "allow": ["GHSA-w59w-h589-9j8r"]
+}

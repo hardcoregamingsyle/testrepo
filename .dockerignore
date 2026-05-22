@@ -1,0 +1,10 @@
+node_modules
+dist
+tests
+.git
+.eslintrc.cjs
+eslint.config.js
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+*.md
