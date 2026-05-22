@@ -1,14 +1,17 @@
 {
   "name": "secure-app",
-  "version": "1.1.8",
-  "scripts": {
-    "build": "npm ci --frozen-lockfile && tsc && vite build"
+  "version": "1.1.6",
+  "engines": {
+    "node": ">=22.14.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "p-queue": "9.0.0",
-    "p-retry": "6.2.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "vite-plugin-subresource-integrity": "1.1.0"
   }
 }
