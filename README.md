@@ -1,35 +1,30 @@
-# SecureApp
+# SecureApp: Production-Ready React 19 Application
 
-A high-security, production-ready React application optimized for deployment on Cloudflare Pages.
+SecureApp is a high-performance, security-hardened React 19 application built with Vite, TypeScript, and a "Feature-First" architectural pattern. It is optimized for Cloudflare Pages deployment.
 
-## Features
-- **Edge Security:** Enforces strict CSP, HSTS, and X-Frame-Options at the Cloudflare edge via `public/_headers`.
-- **SPA Routing:** Seamless client-side navigation handling via `public/_redirects`.
-- **Performance:** Optimized for global distribution via Cloudflare's CDN.
-- **Security-First:** Includes automated audit pipelines (GitHub Actions), strict Zod-based data validation, and non-root container execution.
+## 1. Project Architecture
+- **Feature-First Structure:** Co-located business logic in `src/features/`.
+- **API Layer:** Centralized orchestration using `axios` and `p-queue` for concurrency control.
+- **Global State:** Zustand-based store using the Slice Pattern and `immer`.
 
-## Setup
-1. Install dependencies: `npm install`
-2. Run development server: `npm run dev`
-3. Build for production: `npm run build`
+## 2. Security Posture
+- **Edge Security:** Enforced via `public/_headers` (CSP, HSTS, X-Frame-Options, Permissions-Policy).
+- **Validation:** Zod-based runtime schema enforcement at all API boundaries.
+- **XSS Prevention:** Strict CSP, no `dangerouslySetInnerHTML`, and sanitization via `dompurify`.
+- **Infrastructure:** Hardened for Cloudflare Pages with SPA routing via `public/_redirects`.
 
-## Deployment
-This project is configured for **Cloudflare Pages**.
-- **Command:** `npm run deploy`
-- **Output Directory:** `dist/`
-- **Configuration:** Managed via `wrangler.toml`.
+## 3. Deployment (Cloudflare Pages)
+This project is configured for seamless deployment via [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
 
-## Architecture
-- **Framework:** React 19 + Vite
-- **State Management:** Zustand (slice pattern, `immer` for immutability)
-- **Validation:** Zod (strict runtime schema enforcement)
-- **Infrastructure:** Cloudflare Pages (Edge) + Docker (Local/CI/CD)
+1. **Install Wrangler:** `npm install -g wrangler`
+2. **Login:** `wrangler login`
+3. **Deploy:** `npm run deploy` (triggers `wrangler pages deploy dist`)
 
-## Environment Variables
-- `VITE_API_URL`: The base URL for the backend API.
-- `API_ORIGIN`: Production API endpoint allowed by CSP.
+## 4. Environment Variables
+Ensure the following are set in the Cloudflare Pages dashboard:
+- `VITE_API_URL`: The production API endpoint.
 
-## Security Policies
-- **CSP:** Strict directives; `frame-ancestors 'none'` prevents clickjacking.
-- **Transport:** HSTS enforced with `includeSubDomains` and `preload`.
-- **Integrity:** Subresource Integrity (SRI) hashes generated during build.
+## 5. Development
+- **Start Dev:** `npm run dev`
+- **Run Tests:** `npm test`
+- **Lint:** `npm run lint`
