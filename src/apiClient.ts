@@ -1,48 +1,47 @@
 import { z } from 'zod';
+import pRetry from 'p-retry';
 import PQueue from 'p-queue';
+import { getConfig } from './config';
 
-const MAX_DEPTH = 5;
-const checkDepth = (obj: any, depth = 0): void => {
-  if (depth > MAX_DEPTH) throw new Error('MAX_DEPTH_EXCEEDED');
-  if (obj !== null && typeof obj === 'object') {
-    Object.values(obj).forEach(v => checkDepth(v, depth + 1));
-  }
-};
+const queue = new PQueue({ concurrency: 5 });
+const pendingRequests = new Map<string, Promise<any>>();
 
-class CSRFTokenManager {
-  private static token: string | null = null;
-  static async getToken(signal?: AbortSignal): Promise<string> {
-    if (this.token) return this.token;
-    const r = await fetch('/api/csrf-token', { signal });
-    if (!r.ok) throw new Error('CSRF_FETCH_FAILED');
-    const d = await r.json() as { token: string };
-    this.token = d.token;
-    return d.token;
-  }
-}
-
-const queue = new PQueue({ concurrency: 10 });
+export const SchemaRegistry = Object.freeze({
+  SESSION: z.object({ id: z.string(), role: z.enum(['user', 'guest', 'admin']) }).strict(),
+});
 
 export const apiClient = {
-  request: async <T>(endpoint: string, schema: z.ZodSchema<T>, method: 'GET' | 'POST', body?: unknown): Promise<T> => {
-    const controller = new AbortController();
-    try {
-      if (body) checkDepth(body);
-      const serializedBody = body ? JSON.stringify(body) : undefined;
+  request: async <T>(endpoint: string, schema: z.ZodSchema<T>, method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal): Promise<T> => {
+    const { ALLOWED_ENDPOINTS } = getConfig();
+    if (!ALLOWED_ENDPOINTS.includes(endpoint)) throw new Error('ERR_FORBIDDEN');
+    
+    const cacheKey = `${method}:${endpoint}:${JSON.stringify(body)}`;
+    if (method === 'GET' && pendingRequests.has(cacheKey)) return pendingRequests.get(cacheKey);
 
-      return await queue.add(async () => {
-        const token = await CSRFTokenManager.getToken(controller.signal);
+    const task = queue.add(async () => {
+      try {
         const response = await fetch(endpoint, {
           method,
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
-          body: serializedBody,
-          signal: controller.signal
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: body ? JSON.stringify(schema.parse(body)) : undefined,
+          signal
         });
-        if (!response.ok) throw new Error('API_ERROR');
-        return schema.parse(await response.json());
-      }) as T;
-    } finally {
-      controller.abort();
+
+        if (!response.ok) throw new Error('ERR_API_UNAVAILABLE');
+        const data = await response.json();
+        return schema.parse(data);
+      } catch (err) {
+        if (err instanceof z.ZodError) throw new Error('ERR_VALIDATION');
+        throw err;
+      }
+    });
+
+    if (method === 'GET') {
+      pendingRequests.set(cacheKey, task);
+      task.finally(() => pendingRequests.delete(cacheKey));
     }
+
+    return pRetry(() => task, { retries: 3 });
   }
 };
