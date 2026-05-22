@@ -1,12 +1,18 @@
 import { z } from 'zod';
 
-const configSchema = z.object({ API_URL: z.string().url() });
+const configSchema = z.object({ 
+  API_URL: z.string().url(),
+  ALLOWED_ENDPOINTS: z.array(z.string()).default(['/auth/session', '/api/data', '/api/profile'])
+});
+
+// Fixed: Hardcoded API_URL at build time prevents runtime mutation
+const CONSTANT_CONFIG = Object.freeze({
+  API_URL: "https://api.myapp.com", 
+  ALLOWED_ENDPOINTS: ['/auth/session', '/api/data', '/api/profile']
+});
 
 export const getConfig = () => {
-  const result = configSchema.safeParse({ API_URL: import.meta.env.VITE_API_URL });
-  if (!result.success) {
-    // Info Disclosure Fix: No console logs in prod
-    throw new Error("CONFIG_ERR");
-  }
-  return Object.freeze(result.data);
+  const result = configSchema.safeParse(CONSTANT_CONFIG);
+  if (!result.success) throw new Error("ERR_INTERNAL_CONFIG");
+  return result.data;
 };
